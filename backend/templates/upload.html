@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Subir Excel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .tabs { display: flex; cursor: pointer; margin-bottom: 10px; }
+        .tab { padding: 10px 20px; border: 1px solid #ccc; border-bottom: none; margin-right: 2px; border-radius: 5px 5px 0 0; }
+        .tab.active { background: #f1f1f1; font-weight: bold; }
+        .tab-content { border: 1px solid #ccc; padding: 20px; border-radius: 0 5px 5px 5px; }
+        #progress-container { display:none; margin-top:10px; }
+        #progress-bar { width:0%; height:20px; background:#4caf50; border-radius:5px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<h2>Bienvenido {{ username }} (Rol: {{ role }})</h2>
+<a href="{{ url_for('logout') }}">Cerrar Sesión</a>
+
+<div class="tabs">
+    <div class="tab active" data-target="trabajadores">Trabajadores</div>
+    <div class="tab" data-target="actividades">Actividades</div>
+</div>
+
+<div id="trabajadores" class="tab-content">
+    <h3>Subir Excel de Trabajadores</h3>
+    <form id="uploadFormTrabajadores" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <input type="hidden" name="tipo" value="trabajadores">
+        <button type="submit">Cargar</button>
+    </form>
+</div>
+
+<div id="actividades" class="tab-content" style="display:none;">
+    <h3>Subir Excel de Actividades</h3>
+    <form id="uploadFormActividades" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <input type="hidden" name="tipo" value="actividades">
+        <button type="submit">Cargar</button>
+    </form>
+</div>
+
+<div id="progress-container">
+    <div style="width:100%; background:#f1f1f1; border-radius:5px;">
+        <div id="progress-bar"></div>
+    </div>
+    <span id="progress-text">0%</span>
+</div>
+
+<div id="upload-result"></div>
+
+<h3>Datos cargados</h3>
+<div>
+    {% if tipo == 'trabajadores' %}
+        <table>
+            <thead>
+                <tr><th>ID</th><th>RUT</th><th>Nombre</th><th>Cargo</th></tr>
+            </thead>
+            <tbody>
+            {% for t in trabajadores %}
+                <tr><td>{{ t.id }}</td><td>{{ t.rut }}</td><td>{{ t.nombre }}</td><td>{{ t.cargo }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% elif tipo == 'actividades' %}
+        <table>
+            <thead>
+                <tr><th>ID</th><th>ID1</th><th>ID2</th><th>Descripción</th><th>Rendimiento</th><th>Ponderación</th><th>Unidad</th></tr>
+            </thead>
+            <tbody>
+            {% for a in actividades %}
+                <tr>
+                    <td>{{ a.id }}</td><td>{{ a.id_1 }}</td><td>{{ a.id_2 }}</td>
+                    <td>{{ a.descripcion }}</td><td>{{ a.rendimiento }}</td><td>{{ a.ponderacion }}</td><td>{{ a.unidad }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+
+<script>
+// Cambiar pestañas
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+        document.getElementById(tab.dataset.target).style.display = 'block';
+    });
+});
+
+// Función genérica para subir Excel con barra de progreso
+function setupUpload(formId) {
+    const form = document.getElementById(formId);
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const uploadResult = document.getElementById('upload-result');
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const formData = new FormData(form);
+        const xhr = new XMLHttpRequest();
+
+        xhr.open('POST', '{{ url_for("upload_excel") }}', true);
+
+        xhr.upload.onprogress = function(e){
+            if(e.lengthComputable){
+                const percent = Math.round((e.loaded / e.total) * 100);
+                progressContainer.style.display = 'block';
+                progressBar.style.width = percent + '%';
+                progressText.textContent = percent + '%';
+            }
+        };
+
+        xhr.onload = function(){
+            if(xhr.status === 200){
+                uploadResult.innerHTML = '<span style="color:green;">Archivo cargado correctamente!</span>';
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                setTimeout(()=> location.reload(), 1000);
+            } else {
+                uploadResult.innerHTML = '<span style="color:red;">Error al subir el archivo.</span>';
+            }
+        };
+
+        xhr.send(formData);
+    });
+}
+
+setupUpload('uploadFormTrabajadores');
+setupUpload('uploadFormActividades');
+</script>
+
+</body>
+</html>
