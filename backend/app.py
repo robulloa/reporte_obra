@@ -57,7 +57,7 @@ def login_required(roles=None):
     return wrapper
 
 # RUTAS
-@app.route("/")
+'''@app.route("/")
 def index():
     if "user_id" in session:
         trabajadores = Trabajador.query.all()
@@ -66,6 +66,21 @@ def index():
         return render_template("upload.html", role=session["rol"], username=session["username"],
                                trabajadores=trabajadores, actividades=actividades, tipo=tipo)
     return redirect(url_for("login"))
+'''
+@app.route("/")
+def index():
+    if "user_id" in session:
+        trabajadores = Trabajador.query.all()
+        actividades = Actividad.query.all()
+        return render_template(
+            "upload.html",
+            role=session["rol"],
+            username=session["username"],
+            trabajadores=trabajadores,
+            actividades=actividades
+        )
+    return redirect(url_for("login"))
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -89,7 +104,7 @@ def logout():
     session.clear()
     flash("Sesión cerrada", "info")
     return redirect(url_for("login"))
-
+'''
 @app.route("/upload_excel", methods=["POST"])
 @login_required(roles=["uploader"])
 def upload_excel():
@@ -107,11 +122,69 @@ def upload_excel():
         elif tipo == "actividades":
             for _, row in df.iterrows():
                 db.session.add(Actividad(
-                    id_1=row['ID1'], id_2=row['ID2'], descripcion=row['Descripción'],
-                    rendimiento=row['Rendimiento'], ponderacion=row['Ponderación'], unidad=row['Unidad']
+                    id_1=row['ID1'], id_2=row['ID2'], descripcion=row['DESCRIPCION'],
+                    rendimiento=row['RENDIMIENTO'], ponderacion=row['PONDERACION'], unidad=row['UNIDAD']
                 ))
         db.session.commit()
         return jsonify({"message": "Archivo cargado correctamente!"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+'''
+
+@app.route("/upload_excel", methods=["POST"])
+@login_required(roles=["uploader"])
+def upload_excel():
+    if 'file' not in request.files:
+        return "No hay archivo", 400
+    file = request.files['file']
+    tipo = request.form.get('tipo')
+    if file.filename == '':
+        return "Archivo vacío", 400
+
+    # Funciones auxiliares
+    def clean_numeric(x):
+        """Convierte a float o devuelve None si es NaN o vacío."""
+        if pd.isna(x):
+            return None
+        if isinstance(x, str):
+            x = x.replace('%', '').strip()  # Quitar %
+        try:
+            return float(x)
+        except:
+            return None
+
+    def clean_string(x):
+        """Convierte a str o devuelve None si es NaN o vacío."""
+        if pd.isna(x):
+            return None
+        return str(x).strip()
+
+    try:
+        df = pd.read_excel(file)
+
+        if tipo == "trabajadores":
+            for _, row in df.iterrows():
+                db.session.add(Trabajador(
+                    rut=clean_string(row.get('RUT')),
+                    nombre=clean_string(row.get('Nombre')),
+                    cargo=clean_string(row.get('Cargo'))
+                ))
+
+        elif tipo == "actividades":
+            for _, row in df.iterrows():
+                db.session.add(Actividad(
+                    id_1=clean_string(row.get('ID1')),
+                    id_2=clean_string(row.get('ID2')),  # Si quieres numérico: clean_numeric
+                    descripcion=clean_string(row.get('DESCRIPCION')),
+                    rendimiento=clean_numeric(row.get('RENDIMIENTO')),
+                    ponderacion=clean_numeric(row.get('PONDERACION')),
+                    unidad=clean_string(row.get('UNIDAD'))
+                ))
+
+        db.session.commit()
+        return jsonify({"message": "Archivo cargado correctamente!"})
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
