@@ -2,15 +2,28 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Subir Excel</title>
+    <title>Gestión de Archivos</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        .tabs { display: flex; cursor: pointer; margin-bottom: 10px; }
-        .tab { padding: 10px 20px; border: 1px solid #ccc; border-bottom: none; margin-right: 2px; border-radius: 5px 5px 0 0; }
-        .tab.active { background: #f1f1f1; font-weight: bold; }
-        .tab-content { border: 1px solid #ccc; padding: 20px; border-radius: 0 5px 5px 5px; }
+
+        /* Menú principal */
+        .main-menu ul { list-style: none; padding: 0; }
+        .main-menu li { padding: 10px 15px; cursor: pointer; background: #eee; margin-bottom: 5px; border-radius: 4px; }
+        .main-menu li.active { background: #ccc; font-weight: bold; }
+
+        /* Submenús */
+        .submenu { list-style: none; padding-left: 20px; display: none; }
+        .submenu li { background: #ddd; margin-bottom: 3px; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+        .submenu li.active { background: #bbb; font-weight: bold; }
+
+        /* Contenido */
+        .menu-content { display: none; margin-top: 20px; }
+        .tab-content { display: none; margin-top: 15px; }
+
+        /* Barra de progreso */
         #progress-container { display:none; margin-top:10px; }
         #progress-bar { width:0%; height:20px; background:#4caf50; border-radius:5px; }
+
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         form { padding: 15px; border-radius: 5px; transition: background 0.3s ease; }
@@ -21,29 +34,49 @@
 <h2>Bienvenido {{ username }} (Rol: {{ role }})</h2>
 <a href="{{ url_for('logout') }}">Cerrar Sesión</a>
 
-<div class="tabs">
-    <div class="tab active" data-target="trabajadores">Trabajadores</div>
-    <div class="tab" data-target="actividades">Actividades</div>
+<!-- Menú -->
+<div class="main-menu">
+    <ul>
+        <li class="menu-item active" data-target="subir">📂 Subir Archivos
+            <ul class="submenu">
+                <li class="submenu-item active" data-target="trabajadores">👷 Trabajadores</li>
+                <li class="submenu-item" data-target="actividades">📋 Actividades</li>
+            </ul>
+        </li>
+        <li class="menu-item" data-target="agregar">➕ Agregar Planilla</li>
+    </ul>
 </div>
 
-<div id="trabajadores" class="tab-content">
-    <h3>Subir Excel de Trabajadores</h3>
-    <form id="uploadFormTrabajadores" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <input type="hidden" name="tipo" value="trabajadores">
-        <button type="submit">Cargar</button>
-    </form>
+<!-- Contenido Subir Archivos -->
+<div id="subir" class="menu-content" style="display:block;">
+
+    <div id="trabajadores" class="tab-content" style="display:block;">
+        <h3>Subir Excel de Trabajadores</h3>
+        <form id="uploadFormTrabajadores" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <input type="hidden" name="tipo" value="trabajadores">
+            <button type="submit">Cargar</button>
+        </form>
+    </div>
+
+    <div id="actividades" class="tab-content">
+        <h3>Subir Excel de Actividades</h3>
+        <form id="uploadFormActividades" enctype="multipart/form-data">
+            <input type="file" name="file" required>
+            <input type="hidden" name="tipo" value="actividades">
+            <button type="submit">Cargar</button>
+        </form>
+    </div>
+
 </div>
 
-<div id="actividades" class="tab-content" style="display:none;">
-    <h3>Subir Excel de Actividades</h3>
-    <form id="uploadFormActividades" enctype="multipart/form-data">
-        <input type="file" name="file" required>
-        <input type="hidden" name="tipo" value="actividades">
-        <button type="submit">Cargar</button>
-    </form>
+<!-- Contenido Agregar Planilla -->
+<div id="agregar" class="menu-content">
+    <h3>Agregar Planilla</h3>
+    <p>En desarrollo...</p>
 </div>
 
+<!-- Barra de progreso -->
 <div id="progress-container">
     <div style="width:100%; background:#f1f1f1; border-radius:5px;">
         <div id="progress-bar"></div>
@@ -53,6 +86,7 @@
 
 <div id="upload-result"></div>
 
+<!-- Tablas -->
 <h3>Datos cargados</h3>
 
 <div id="tabla-trabajadores">
@@ -87,36 +121,42 @@
 </div>
 
 <script>
-// Cambiar pestañas
-const tabs = document.querySelectorAll('.tab');
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+// --- Menú principal ---
+const menuItems = document.querySelectorAll('.menu-item');
+menuItems.forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.menu-content').forEach(mc => mc.style.display = 'none');
+        menuItems.forEach(mi => mi.classList.remove('active'));
 
-        document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
-        document.getElementById(tab.dataset.target).style.display = 'block';
+        item.classList.add('active');
+        const target = item.dataset.target;
+        document.getElementById(target).style.display = 'block';
 
-        updateUploadColor();
+        // Mostrar submenu solo si es "Subir Archivos"
+        if (target === "subir") {
+            item.querySelector('.submenu').style.display = 'block';
+        } else {
+            document.querySelectorAll('.submenu').forEach(sm => sm.style.display = 'none');
+        }
     });
 });
 
-// Función para cambiar el color del formulario según la pestaña
-function updateUploadColor() {
-    const activeTab = document.querySelector('.tab.active').dataset.target;
-    const forms = document.querySelectorAll('.tab-content form');
-    forms.forEach(f => f.style.backgroundColor = ''); // reset
-    if(activeTab === 'trabajadores'){
-        document.querySelector('#trabajadores form').style.backgroundColor = '#d4edda'; // verde suave
-    } else if(activeTab === 'actividades'){
-        document.querySelector('#actividades form').style.backgroundColor = '#fff3cd'; // amarillo suave
-    }
-}
+// --- Submenús ---
+const submenuItems = document.querySelectorAll('.submenu-item');
+submenuItems.forEach(sub => {
+    sub.addEventListener('click', e => {
+        submenuItems.forEach(s => s.classList.remove('active'));
+        sub.classList.add('active');
 
-// Inicializar color al cargar la página
-updateUploadColor();
+        const target = sub.dataset.target;
+        document.querySelectorAll('.tab-content').forEach(tc => tc.style.display = 'none');
+        document.getElementById(target).style.display = 'block';
 
-// Función genérica para subir Excel con barra de progreso
+        e.stopPropagation();
+    });
+});
+
+// --- Subida con progreso ---
 function setupUpload(formId) {
     const form = document.getElementById(formId);
     const progressContainer = document.getElementById('progress-container');
@@ -155,7 +195,6 @@ function setupUpload(formId) {
     });
 }
 
-// Inicializar subida para ambos formularios
 setupUpload('uploadFormTrabajadores');
 setupUpload('uploadFormActividades');
 </script>
