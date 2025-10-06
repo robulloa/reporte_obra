@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Nuevo Informe Diario de Obra</h2>
+  <form method="POST">
+
+    <!-- Datos generales -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <label>Responsable</label>
+        <input type="text" class="form-control" name="responsable" required>
+      </div>
+      <div class="col-md-3">
+        <label>Fecha</label>
+        <input type="date" class="form-control" name="fecha" required>
+      </div>
+      <div class="col-md-2">
+        <label>Número</label>
+        <input type="number" class="form-control" name="numero">
+      </div>
+      
+
+    <!-- Datos trabajador -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+          <label>RUT</label>
+          <input type="text" class="form-control" id="rut" name="rut" required>
+        </div>
+        <div class="col-md-3">
+          <label>Rol</label>
+          <input type="text" class="form-control" id="rol" name="rol" readonly>
+        </div>
+        <div class="col-md-3">
+          <label>Nombre</label>
+          <input type="text" class="form-control" id="nombre" name="nombre" readonly>
+        </div>
+        <div class="col-md-3">
+          <label>Cargo</label>
+          <input type="text" class="form-control" id="cargo" name="cargo" readonly>
+        </div>
+      </div>
+
+    <!-- Horas de trabajo (A - O) -->
+    <h5 class="mt-4">Horas de Trabajo</h5>
+    <div class="row text-center">
+      {% for letra in 'ABCDEFGHIJKLMNO' %}
+      <div class="col-md-1 mb-2">
+        <label>{{ letra }}</label>
+        <input type="number" 
+               class="form-control text-center horas-input" 
+               name="horas_trabajo_{{ letra.lower() }}" 
+               min="0" 
+               value="0">
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- HH y observaciones -->
+    <div class="row mt-3">
+      <div class="col-md-2">
+        <label>HH</label>
+        <input type="number" class="form-control" id="hh" name="hh" readonly>
+      </div>
+      <div class="col-md-10">
+        <label>Observaciones</label>
+        <input type="text" class="form-control" name="observaciones">
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-success mt-4">Guardar Informe</button>
+  </form>
+</div>
+
+<!-- Script para sumar las horas -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const horaInputs = document.querySelectorAll('.horas-input');
+  const hhField = document.getElementById('hh');
+
+  function calcularHH() {
+    let total = 0;
+    horaInputs.forEach(input => {
+      total += parseFloat(input.value) || 0;
+    });
+    hhField.value = total;
+  }
+
+  horaInputs.forEach(input => {
+    input.addEventListener('input', calcularHH);
+  });
+
+  // Calcula HH inicial por si hay valores cargados
+  calcularHH();
+});
+</script>
+
+<script>
+    document.getElementById('rut').addEventListener('blur', async function() {
+      const rut = this.value.trim();
+      if (!rut) return;
+    
+      try {
+        const response = await fetch(`/buscar_trabajador?rut=${rut}`);
+        const data = await response.json();
+    
+        if (response.ok) {
+          document.getElementById('rol').value = data.rol || '';
+          document.getElementById('nombre').value = data.nombre || '';
+          document.getElementById('cargo').value = data.cargo || '';
+        } else {
+          alert('No se encontró información para ese RUT');
+          document.getElementById('rol').value = '';
+          document.getElementById('nombre').value = '';
+          document.getElementById('cargo').value = '';
+        }
+      } catch (error) {
+        console.error('Error al buscar trabajador:', error);
+      }
+    });
+    </script>
+    
+
+{% endblock %}
